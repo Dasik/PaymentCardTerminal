@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="NFCFormsSample.MainXAMLPage"
+             Title="Payment card терминал">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="Auto"></RowDefinition>
+        </Grid.RowDefinitions>
+        <BoxView x:Name="resultBox" Grid.Row="0" Color="Red"></BoxView>
+        <Label x:Name="resultLabel" Grid.Row="0" TextColor="Black" HorizontalOptions="CenterAndExpand" VerticalOptions="CenterAndExpand"></Label>
+        <Button Text="Логин" Clicked="onLoginButton_Clicled" Grid.Row="1"></Button>
+    </Grid>
+</ContentPage>
