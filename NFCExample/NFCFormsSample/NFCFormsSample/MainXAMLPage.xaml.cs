@@ -60,7 +60,7 @@ namespace NFCFormsSample
         /// <summary>
         /// Список пожизненно забаненных карт. Загружается с сервера
         /// </summary>
-        private List<string> _blackList;
+        private List<string> _blackList=new List<string>();
 
         public MainXAMLPage()
         {
@@ -100,6 +100,8 @@ namespace NFCFormsSample
             #region LocationSetting
             try
             {
+                //RestService.LoginDriver("Nahuy", "Eto");
+                throw new NotImplementedException();
                 _locator = CrossGeolocator.Current;
                 _locator.AllowsBackgroundUpdates = true;
                 _locator.DesiredAccuracy = 50;

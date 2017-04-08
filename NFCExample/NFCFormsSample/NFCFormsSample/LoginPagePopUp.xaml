@@ -4,8 +4,8 @@
         <Grid>
             <StackLayout Padding="10" Spacing="15">
                 <Entry x:Name="LoginEntry" Completed="LoginEntry_OnCompleted" Placeholder="Логин" TextChanged="LoginEntry_OnTextChanged"></Entry>
-                <Entry x:Name="PasswordEntry" Completed="Button_OnClicked" Placeholder="Пароль" IsPassword="True"></Entry>
-                <Button Text="Ok" Clicked="Button_OnClicked"></Button>
+                <Entry x:Name="PasswordEntry" Completed="OKButton_OnClicked" Placeholder="Пароль" IsPassword="True"></Entry>
+                <Button x:Name="OKButton" Text="Ok" Clicked="OKButton_OnClicked"></Button>
             </StackLayout>
         </Grid>
     </ContentView.Content>

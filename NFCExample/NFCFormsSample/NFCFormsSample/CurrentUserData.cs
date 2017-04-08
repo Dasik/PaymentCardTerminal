@@ -18,7 +18,7 @@ namespace NFCFormsSample
         public static string PasswordHash
         {
             get { return _passwordHash; }
-            set { _passwordHash = CreateMD5(value); }
+            set { _passwordHash = CreateSHA1(value); }
         }
         private static string _passwordHash = "";
 
@@ -75,7 +75,7 @@ namespace NFCFormsSample
             var jsonFile= File.ReadAllText(filename);
             try
             {
-                var result = SimpleJson.DeserializeObject<BusRouteIdsClassForDeserealize>(jsonFile);
+                var result = RestSharp.SimpleJson.DeserializeObject<BusRouteIdsClassForDeserealize>(jsonFile);
                 Application.Current.Properties["BusId"] = result.BusID;
                 Application.Current.Properties["RouteId"] = result.RouteId;
             }
@@ -92,13 +92,13 @@ namespace NFCFormsSample
             Application.Current.Properties["RouteId"] = 1;
         }
 
-        public static string CreateMD5(string input)
+        public static string CreateSHA1(string input)
         {
             // Use input string to calculate MD5 hash
-            using (System.Security.Cryptography.MD5 md5 = System.Security.Cryptography.MD5.Create())
+            using (System.Security.Cryptography.SHA1 sha1 = System.Security.Cryptography.SHA1.Create())
             {
                 byte[] inputBytes = System.Text.Encoding.ASCII.GetBytes(input);
-                byte[] hashBytes = md5.ComputeHash(inputBytes);
+                byte[] hashBytes = sha1.ComputeHash(inputBytes);
 
                 // Convert the byte array to hexadecimal string
                 StringBuilder sb = new StringBuilder();
