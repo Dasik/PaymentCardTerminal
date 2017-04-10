@@ -25,8 +25,8 @@ namespace NFCFormsSample
             }
             OKButton.IsEnabled = false;
             CurrentUserData.UserName = LoginEntry.Text;
-            CurrentUserData.PasswordHash = PasswordEntry.Text;
-            CurrentUserData.DriverId = await RestService.LoginDriver(CurrentUserData.UserName, CurrentUserData.PasswordHash);
+            CurrentUserData.Password = PasswordEntry.Text;
+            CurrentUserData.DriverId = await RestService.LoginDriver(CurrentUserData.UserName, CurrentUserData.Password);
             if (CurrentUserData.DriverId == -1)//TODO: Добавить форму для пароль или логин неверен
             {
                 OKButton.IsEnabled = true;

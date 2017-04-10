@@ -48,7 +48,7 @@ namespace NFCFormsSample
         /// <summary>
         /// Список карт, занесенных в локальный бан
         /// </summary>
-        public Dictionary<string, DateTime> CardsBufferBan = new Dictionary<string, DateTime>();
+        public Dictionary<long, DateTime> CardsBufferBan = new Dictionary<long, DateTime>();
         /// <summary>
         /// Таймер сброса значения индикатора терминала
         /// </summary>
@@ -60,7 +60,7 @@ namespace NFCFormsSample
         /// <summary>
         /// Список пожизненно забаненных карт. Загружается с сервера
         /// </summary>
-        private List<string> _blackList=new List<string>();
+        private List<long> _blackList=new List<long>();
 
         public MainXAMLPage()
         {
@@ -150,12 +150,15 @@ namespace NFCFormsSample
             _resultBoxResetTimerTask.Stop();
             try
             {
-                string tagID = "";
-                foreach (var item in tag.Id)
-                {
-                    tagID += item.ToString("X2") /*+ ":"*/;
-                }
-                
+                var bytesArray = new byte[8] {0, 0, 0, 0, 0, 0, 0, 0};
+                for (int i = 0; i < tag.Id.Length; i++)
+                    bytesArray[i] = tag.Id[i];
+                long tagID = BitConverter.ToInt64(bytesArray, 0);
+                //foreach (var item in tag.Id)
+                //{
+                //    tagID += item.ToString("X2") /*+ ":"*/;
+                //}
+
                 if (_blackList.Contains(tagID))
                 {
                     ChangeResultBoxState(ResultStatesEnum.Blocked);
@@ -164,7 +167,7 @@ namespace NFCFormsSample
                 if (CardsBufferBan.ContainsKey(tagID))
                 {
                     ChangeResultBoxState(ResultStatesEnum.Banned);
-                    if (_checkTimeValue(CardsBufferBan[tagID],TimeOfBan))
+                    if (_checkTimeValue(CardsBufferBan[tagID], TimeOfBan))
                         CardsBufferBan.Remove(tagID);
                     else
                     {
@@ -172,9 +175,10 @@ namespace NFCFormsSample
                         return;
                     }
                 }
-                if (await RestService.SendNewEvent(_currentLongitude,_currentLatitude, tagID) != null)
+                string resultMessage;
+                if ((resultMessage = await RestService.SendNewEvent(_currentLongitude, _currentLatitude, tagID)) != null)
                 {
-                    ChangeResultBoxState(ResultStatesEnum.NotEnoughMoney);
+                    ChangeResultBoxState(ResultStatesEnum.NotEnoughMoney, resultMessage);
                     return;
                 }
                 CardsBufferBan.Add(tagID, DateTime.Now);
@@ -191,8 +195,9 @@ namespace NFCFormsSample
             {
                 Debug.WriteLine("Error: " + ex);
             }
-
-            _resultBoxResetTimerTask.Start();
+            finally
+            {_resultBoxResetTimerTask.Start();
+            }
         }
 
         /// <summary>

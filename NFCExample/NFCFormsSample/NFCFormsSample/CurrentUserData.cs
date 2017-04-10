@@ -12,17 +12,19 @@ namespace NFCFormsSample
         /// логин пользователя
         /// </summary>
         public static string UserName { get; set; }
+        //Хеш пароля пользователя. Следует присваивать сам пароль, а не его хеш, т.к. свойство само расчитает его хеш.
         /// <summary>
-        /// Хеш пароля пользователя. Следует присваивать сам пароль, а не его хеш, т.к. свойство само расчитает его хеш. 
+        /// Пароль пользователя
         /// </summary>
-        public static string PasswordHash
+        public static string Password
         {
-            get { return _passwordHash; }
-            set { _passwordHash = CreateSHA1(value); }
+            get { return _password; }
+            //set { _passwordHash = CreateSHA1(value); }
+            set { _password = value; }
         }
-        private static string _passwordHash = "";
+        private static string _password = "";
 
-
+        //public static string 
         /// <summary>
         /// Возвращает id водителя, если он объявлен, иначе -1
         /// </summary>
@@ -92,23 +94,23 @@ namespace NFCFormsSample
             Application.Current.Properties["RouteId"] = 1;
         }
 
-        public static string CreateSHA1(string input)
-        {
-            // Use input string to calculate MD5 hash
-            using (System.Security.Cryptography.SHA1 sha1 = System.Security.Cryptography.SHA1.Create())
-            {
-                byte[] inputBytes = System.Text.Encoding.ASCII.GetBytes(input);
-                byte[] hashBytes = sha1.ComputeHash(inputBytes);
+        //public static string CreateSHA1(string input)
+        //{
+        //    // Use input string to calculate MD5 hash
+        //    using (System.Security.Cryptography.SHA1 sha1 = System.Security.Cryptography.SHA1.Create())
+        //    {
+        //        byte[] inputBytes = System.Text.Encoding.ASCII.GetBytes(input);
+        //        byte[] hashBytes = sha1.ComputeHash(inputBytes);
 
-                // Convert the byte array to hexadecimal string
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < hashBytes.Length; i++)
-                {
-                    sb.Append(hashBytes[i].ToString("X2"));
-                }
-                return sb.ToString();
-            }
-        }
+        //        // Convert the byte array to hexadecimal string
+        //        StringBuilder sb = new StringBuilder();
+        //        for (int i = 0; i < hashBytes.Length; i++)
+        //        {
+        //            sb.Append(hashBytes[i].ToString("X2"));
+        //        }
+        //        return sb.ToString();
+        //    }
+        //}
         private class BusRouteIdsClassForDeserealize
         {
             public int BusID { get; set; }
