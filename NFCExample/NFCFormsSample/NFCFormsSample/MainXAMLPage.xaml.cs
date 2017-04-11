@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Timers;
 using NFCFormsSample.Droid;
 using Plugin.Geolocator;
@@ -29,16 +30,16 @@ namespace NFCFormsSample
         /// <summary>
         /// Время обновления списка заблокированных карт в милисекундах 
         /// </summary>
-        private const int BlackListUpdateTime = 10*60 * 1000;
+        private const int BlackListUpdateTime = 10 * 60 * 1000;
         /// <summary>
         /// Таймер для обновления списка забаненных карточек
         /// </summary>
         private Timer BanTimerTask;
 
         private readonly INfcForms device;
-/// <summary>
-/// Широта
-/// </summary>
+        /// <summary>
+        /// Широта
+        /// </summary>
         private double _currentLatitude = -1;
         /// <summary>
         /// Долгота
@@ -60,7 +61,7 @@ namespace NFCFormsSample
         /// <summary>
         /// Список пожизненно забаненных карт. Загружается с сервера
         /// </summary>
-        private List<long> _blackList=new List<long>();
+        private List<long> _blackList = new List<long>();
 
         public MainXAMLPage()
         {
@@ -70,7 +71,7 @@ namespace NFCFormsSample
             BanTimerTask = new Timer(BanTimerUpdate);
             BanTimerTask.Elapsed += (sender, e) =>
             {
-                var cardsToRemove = CardsBufferBan.Where(t =>_checkTimeValue(t.Value,TimeOfBan))
+                var cardsToRemove = CardsBufferBan.Where(t => _checkTimeValue(t.Value, TimeOfBan))
                                                     .Select(pair => pair.Key)
                                                     .ToList();
                 //var cardsToRemove = CardsBufferBan.Where(t => DateTime.Now.Second - t.Value.Second >= TimeOfBan)
@@ -91,10 +92,14 @@ namespace NFCFormsSample
                 });
             };
             _resultBoxResetTimerTask.Start();
-            _blackListUpdateTimerTask =new Timer(BlackListUpdateTime);
-            _blackListUpdateTimerTask.Elapsed += (sender, e) =>
+            _blackListUpdateTimerTask = new Timer(BlackListUpdateTime);
+            Task.Run(async () =>
             {
-                _blackList = RestService.GetBlockedCardsList().Result;
+                _blackList = await RestService.GetBlockedCardsList();
+            });
+            _blackListUpdateTimerTask.Elapsed += async (sender, e) =>
+            {
+                _blackList = await RestService.GetBlockedCardsList();
             };
             _blackListUpdateTimerTask.Start();
             #region LocationSetting
@@ -139,7 +144,7 @@ namespace NFCFormsSample
                     }
                 };
             }
-#endregion
+            #endregion
 
             ShowLoginPagePopUp();
             ChangeResultBoxState(ResultStatesEnum.Waiting);
@@ -150,7 +155,7 @@ namespace NFCFormsSample
             _resultBoxResetTimerTask.Stop();
             try
             {
-                var bytesArray = new byte[8] {0, 0, 0, 0, 0, 0, 0, 0};
+                var bytesArray = new byte[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
                 for (int i = 0; i < tag.Id.Length; i++)
                     bytesArray[i] = tag.Id[i];
                 long tagID = BitConverter.ToInt64(bytesArray, 0);
@@ -196,7 +201,8 @@ namespace NFCFormsSample
                 Debug.WriteLine("Error: " + ex);
             }
             finally
-            {_resultBoxResetTimerTask.Start();
+            {
+                _resultBoxResetTimerTask.Start();
             }
         }
 

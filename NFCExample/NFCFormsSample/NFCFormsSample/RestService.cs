@@ -122,12 +122,13 @@ namespace NFCFormsSample
             var response = await _client.ExecuteTaskAsync<List<long>>(request);
             //TODO: remove this when server is complete
             //response.ErrorMessage = rand.Next(0, 2) == 1 ? "" : "Unknown error";
-            response.Data = new List<long>();
             if (response.StatusCode != HttpStatusCode.OK)
             {
                 await Xamarin.Forms.Application.Current.MainPage.DisplayAlert("Error", response.StatusCode.ToString(), "OK");
-                return null;
+                return new List<long>(); 
             }
+            if (response.Data == null)
+                response.Data = new List<long>();
             return response.Data;
         }
 
