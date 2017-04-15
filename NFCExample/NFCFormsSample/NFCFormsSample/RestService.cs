@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -12,17 +13,36 @@ namespace NFCFormsSample
 {
     public static class RestService
     {
-        private const string baseUrl = "http://192.168.0.90:8080";
-        private static Random rand = new Random(); //TODO: remove this when server is complete
         private static readonly RestClient _client = new RestClient("http://192.168.0.90:8080");
-        private static CSRFToken tokenID = new CSRFToken() { x_CSRF_TOKEN = "A", x_CSRF_HEADER = "B", x_CSRF_PARAM = "C" };
+        private static CsrfToken<Object> tokenID = new CsrfToken<Object>() { x_CSRF_TOKEN = "A", x_CSRF_HEADER = "B", x_CSRF_PARAM = "C" };
+
+        static RestService()
+        {
+            string path = Environment.GetFolderPath(Environment.SpecialFolder.Personal);
+            string filename = Path.Combine(path, "URLSettings.dat");
+            //using (var streamWriter = new StreamWriter(filename, true))
+            //{
+            //    streamWriter.WriteLine($"insert into events(payment_time,bus_id,coordinates,card_id) " +
+            //                           $"values (sysdate,{CurrentUserData.BusId},'{_currentLongitude} x {_currentLatitude}','{tagID}');\n");
+            //}
+
+            //File.WriteAllText(filename, SimpleJson.SerializeObject(new BusRouteIdsClassForDeserealize() { BusID = 5, RouteId = 5 }));
+
+            if (!File.Exists(filename))
+            {
+                Debug.WriteLine("URLSettings File Not Exists");
+                return;
+            }
+            var URLSettings = File.ReadAllText(filename);
+            _client = new RestClient(URLSettings);
+        }
         /// <summary>
         /// Выполняет попытку залогинить водителя.
         /// </summary>
         /// <param name="username">логин пользователя</param>
-        /// <param name="password"> sha1 хэш сумма пароля</param>
+        /// <param name="password"> пароль</param>
         /// <returns>Возвращает id пользователя в случае успешного логина, иначе -1</returns>
-        public static async Task<int> LoginDriver(string username, string password)
+        public static async Task<long> LoginDriver(string username, string password)
         {
             tokenID = await _getCSRFToken();
             _client.Authenticator = new HttpBasicAuthenticator(username, password);
@@ -35,14 +55,18 @@ namespace NFCFormsSample
             //{
             //    username = username,
             //    passHash = password
-            //});
-            var response = await _client.ExecuteTaskAsync(request);
+            ////});
+            var response = await _client.ExecuteTaskAsync<CsrfToken<long>>(request);
+
+            //var response = await _client.ExecuteTaskAsync(request);
             if (response.StatusCode != HttpStatusCode.OK)
             {
                 await Xamarin.Forms.Application.Current.MainPage.DisplayAlert("LoginError", response.StatusCode.ToString(), "OK");
                 return -1;
             }
-            return Convert.ToInt32(response.Content);
+            UpdateCsrfToken(response.Data);
+            return response.Data.RequestBody;
+            //return Convert.ToInt64(response.Content);
         }
 
         /// <summary>
@@ -51,9 +75,10 @@ namespace NFCFormsSample
         /// <returns>true в случае успешной передачи, иначе false</returns>
         public static async Task<bool> SendCarAssign()
         {
-            var request = new RestRequest("API/carAssignment/", Method.POST);
-            request.RequestFormat = DataFormat.Json;
-            request.AddParameter(tokenID.x_CSRF_PARAM, tokenID.x_CSRF_TOKEN, ParameterType.QueryString);
+            var request = new RestRequest("API/carAssignment", Method.POST);
+            request.RequestFormat = DataFormat.Json; 
+            if (tokenID != null)
+                request.AddParameter(tokenID.x_CSRF_PARAM, tokenID.x_CSRF_TOKEN, ParameterType.QueryString);
             request.AddJsonBody(new
             {
                 BusId = CurrentUserData.BusId,
@@ -61,14 +86,13 @@ namespace NFCFormsSample
                 RouteId = CurrentUserData.RouteId
             });
 
-            var response = await _client.ExecuteTaskAsync(request);
-            //TODO: remove this when server is complete
-            //response.ErrorMessage = rand.Next(0, 2) == 1 ? "" : "Unknown error";
+            var response = await _client.ExecuteTaskAsync<CsrfToken<object>>(request);
             if (response.StatusCode != HttpStatusCode.OK)
             {
                 await Xamarin.Forms.Application.Current.MainPage.DisplayAlert("Error", response.StatusCode.ToString(), "OK");
                 return false;
             }
+            UpdateCsrfToken(response.Data);
             return true;
         }
 
@@ -82,7 +106,8 @@ namespace NFCFormsSample
         {
             var request = new RestRequest("API/newEvent/", Method.POST);
             request.RequestFormat = DataFormat.Json;
-            request.AddParameter(tokenID.x_CSRF_PARAM, tokenID.x_CSRF_TOKEN, ParameterType.QueryString);
+            if (tokenID != null)
+                request.AddParameter(tokenID.x_CSRF_PARAM, tokenID.x_CSRF_TOKEN, ParameterType.QueryString);
             request.AddJsonBody(new
             {
                 BusId = CurrentUserData.BusId,
@@ -90,7 +115,7 @@ namespace NFCFormsSample
                 Latitude = latitude,
                 TagID = TagID
             });
-            var response = await _client.ExecuteTaskAsync(request);
+            var response = await _client.ExecuteTaskAsync<CsrfToken<string>>(request);
             if (response.StatusCode != HttpStatusCode.OK)
             {
                 string responceCodeDescription;
@@ -98,8 +123,10 @@ namespace NFCFormsSample
                 {
                     case HttpStatusCode.NotFound:
                         responceCodeDescription = "Карта не зарегистрирована в системе";
+                        UpdateCsrfToken(response.Data);
                         break;
                     case HttpStatusCode.PaymentRequired:
+                        UpdateCsrfToken(response.Data);
                         responceCodeDescription = "Недостаточно средств";
                         break;
                     default:
@@ -109,33 +136,33 @@ namespace NFCFormsSample
                 //await Xamarin.Forms.Application.Current.MainPage.DisplayAlert("Error", response.ErrorMessage, "OK");
                 return responceCodeDescription;
             }
+            UpdateCsrfToken(response.Data);
             return null;
         }
 
         /// <summary>
         /// Получает с сервера список заблокированных карт
         /// </summary>
-        public static async Task<List<long>> GetBlockedCardsList()//TODO:Сделать на сервере
+        public static async Task<List<long>> GetBlockedCardsList()
         {
             var request = new RestRequest("API/getBlockedCards/", Method.GET);
 
-            var response = await _client.ExecuteTaskAsync<List<long>>(request);
-            //TODO: remove this when server is complete
-            //response.ErrorMessage = rand.Next(0, 2) == 1 ? "" : "Unknown error";
+            var response = await _client.ExecuteTaskAsync<CsrfToken<List<long>>>(request);
             if (response.StatusCode != HttpStatusCode.OK)
             {
                 await Xamarin.Forms.Application.Current.MainPage.DisplayAlert("Error", response.StatusCode.ToString(), "OK");
                 return new List<long>(); 
             }
-            if (response.Data == null)
-                response.Data = new List<long>();
-            return response.Data;
+            if (response.Data.RequestBody == null)
+                response.Data.RequestBody = new List<long>();
+            UpdateCsrfToken(response.Data);
+            return response.Data.RequestBody;
         }
 
-        private static async Task<CSRFToken> _getCSRFToken()
+        private static async Task<CsrfToken<Object>> _getCSRFToken()
         {
             var request = new RestRequest("API/driverLogin/csrf-token", Method.GET);
-            var response = await _client.ExecuteGetTaskAsync<CSRFToken>(request);
+            var response = await _client.ExecuteGetTaskAsync<CsrfToken<Object>>(request);
             //TODO: remove this when server is complete
             //response.ErrorMessage = rand.Next(0, 2)==1 ? "" : "Login or password is incorrect";
             //response.Content = "{id: 42,token=dsjksdkfdjdfnjkdfnj}";
@@ -151,6 +178,13 @@ namespace NFCFormsSample
             }
             _client.CookieContainer = _cookieJar;
             return response.Data;
+        }
+
+        private static void UpdateCsrfToken<T>(CsrfToken<T> token)
+        {
+            tokenID.x_CSRF_TOKEN = token.x_CSRF_TOKEN;
+            tokenID.x_CSRF_HEADER = token.x_CSRF_HEADER;
+            tokenID.x_CSRF_PARAM = token.x_CSRF_PARAM;
         }
         //static RestService()
         //{
@@ -220,11 +254,12 @@ namespace NFCFormsSample
         //    return "";
         //}
 
-        private class CSRFToken
+        private class CsrfToken<T>
         {
             public string x_CSRF_HEADER { get; set; }
             public string x_CSRF_PARAM { get; set; }
             public string x_CSRF_TOKEN { get; set; }
+            public T RequestBody { get; set; }
         }
     }
 }

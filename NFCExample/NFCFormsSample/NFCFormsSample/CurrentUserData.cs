@@ -28,7 +28,7 @@ namespace NFCFormsSample
         /// <summary>
         /// Возвращает id водителя, если он объявлен, иначе -1
         /// </summary>
-        public static int DriverId { get; set; }
+        public static long DriverId { get; set; }
 
         /// <summary>
         /// Возвращает id маршрута, если он объявлен, иначе -1
@@ -59,6 +59,7 @@ namespace NFCFormsSample
 
         static CurrentUserData()
         {
+            DriverId = -1;
             string path = Environment.GetFolderPath(Environment.SpecialFolder.Personal);
             string filename = Path.Combine(path, "SystemSettings.dat");
             //using (var streamWriter = new StreamWriter(filename, true))

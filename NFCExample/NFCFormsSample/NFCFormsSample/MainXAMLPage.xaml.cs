@@ -93,15 +93,6 @@ namespace NFCFormsSample
             };
             _resultBoxResetTimerTask.Start();
             _blackListUpdateTimerTask = new Timer(BlackListUpdateTime);
-            Task.Run(async () =>
-            {
-                _blackList = await RestService.GetBlockedCardsList();
-            });
-            _blackListUpdateTimerTask.Elapsed += async (sender, e) =>
-            {
-                _blackList = await RestService.GetBlockedCardsList();
-            };
-            _blackListUpdateTimerTask.Start();
             #region LocationSetting
             try
             {
@@ -147,6 +138,16 @@ namespace NFCFormsSample
             #endregion
 
             ShowLoginPagePopUp();
+            Task.Run(async () =>
+            {
+                while (CurrentUserData.DriverId == -1) ;
+                _blackList = await RestService.GetBlockedCardsList();
+            });
+            _blackListUpdateTimerTask.Elapsed += async (sender, e) =>
+            {
+                _blackList = await RestService.GetBlockedCardsList();
+            };
+            _blackListUpdateTimerTask.Start();
             ChangeResultBoxState(ResultStatesEnum.Waiting);
         }
 
