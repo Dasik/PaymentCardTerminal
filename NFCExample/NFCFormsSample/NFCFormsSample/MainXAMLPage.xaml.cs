@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
+using Android.Media;
 using NFCFormsSample.Droid;
 using Plugin.Geolocator;
 using Plugin.Geolocator.Abstractions;
@@ -16,17 +17,17 @@ namespace NFCFormsSample
     public partial class MainXAMLPage : ContentPage
     {
         /// <summary>
-        /// Время, на которое карта заносится в локальный бан терминала в минутах
+        /// Время, на которое карта заносится в локальный бан терминала в секундах
         /// </summary>
-        private const int TimeOfBan = 10;//in minutes
+        private const int TimeOfBan = 7;
         /// <summary>
         /// Время обновления списка забаненных uid карточек в милисекундах 
         /// </summary>
-        private const int BanTimerUpdate = 30 * 1000;
+        private const int BanTimerUpdate = 7 * 1000;
         /// <summary>
         /// Время сброса значения индикатора терминала в милисекундах 
         /// </summary>
-        private const int ResultBoxResetTime = 5 * 1000;
+        private const int ResultBoxResetTime = 13 * 1000;
         /// <summary>
         /// Время обновления списка заблокированных карт в милисекундах 
         /// </summary>
@@ -62,6 +63,10 @@ namespace NFCFormsSample
         /// Список пожизненно забаненных карт. Загружается с сервера
         /// </summary>
         private List<long> _blackList = new List<long>();
+        /// <summary>
+        /// Текущее состояние ResultBox'а
+        /// </summary>
+        private ResultStatesEnum _currentResultState=ResultStatesEnum.Waiting;
 
         public MainXAMLPage()
         {
@@ -71,25 +76,42 @@ namespace NFCFormsSample
             BanTimerTask = new Timer(BanTimerUpdate);
             BanTimerTask.Elapsed += (sender, e) =>
             {
-                var cardsToRemove = CardsBufferBan.Where(t => _checkTimeValue(t.Value, TimeOfBan))
-                                                    .Select(pair => pair.Key)
-                                                    .ToList();
-                //var cardsToRemove = CardsBufferBan.Where(t => DateTime.Now.Second - t.Value.Second >= TimeOfBan)
-                //                                    .Select(pair => pair.Key)
-                //                                    .ToList();
-                foreach (var item in cardsToRemove)
+                Debug.WriteLine($" BanTimerTask.Elapsed; CardsBufferBan.Count={CardsBufferBan.Count}");
+                try
                 {
-                    CardsBufferBan.Remove(item);
+                    var cardsToRemove = CardsBufferBan.Where(t => _checkTimeValue(t.Value, TimeOfBan))
+                                     .Select(pair => pair.Key)
+                                     .ToList();
+                    //var cardsToRemove = CardsBufferBan.Where(t => DateTime.Now.Second - t.Value.Second >= TimeOfBan)
+                    //                                    .Select(pair => pair.Key)
+                    //                                    .ToList();
+                    foreach (var item in cardsToRemove)
+                    {
+                        CardsBufferBan.Remove(item);
+                    }
                 }
+                catch (Exception exception)
+                {
+                    Debug.WriteLine(exception);
+                }
+
             };
             BanTimerTask.Start();
             _resultBoxResetTimerTask = new Timer(ResultBoxResetTime);
             _resultBoxResetTimerTask.Elapsed += (sender, e) =>
             {
-                Device.BeginInvokeOnMainThread(() =>
+                Debug.WriteLine($" _resultBoxResetTimerTask.Elapsed");
+                try
                 {
-                    ChangeResultBoxState(ResultStatesEnum.Waiting);
-                });
+                    Device.BeginInvokeOnMainThread(() =>
+                    {
+                        ChangeResultBoxState(ResultStatesEnum.Waiting);
+                    });
+                }
+                catch (Exception exception)
+                {
+                    Debug.WriteLine(exception);
+                }
             };
             _resultBoxResetTimerTask.Start();
             _blackListUpdateTimerTask = new Timer(BlackListUpdateTime);
@@ -108,6 +130,7 @@ namespace NFCFormsSample
                 _currentLongitude = position.Result.Longitude;
                 _locator.PositionChanged += (sender, e) =>
                 {
+                    Debug.WriteLine($"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
                     _currentLatitude = e.Position.Latitude;
                     _currentLongitude = e.Position.Longitude;
                 };
@@ -138,14 +161,33 @@ namespace NFCFormsSample
             #endregion
 
             ShowLoginPagePopUp();
-            Task.Run(async () =>
+            try
             {
-                while (CurrentUserData.DriverId == -1) ;
-                _blackList = await RestService.GetBlockedCardsList();
-            });
+                Task.Run(async () =>
+                {
+                    Debug.WriteLine($"Waiting setup DriverId");
+                    while (CurrentUserData.DriverId == -1)
+                        await Task.Delay(1000);
+                    Debug.WriteLine($"DriverId={CurrentUserData.DriverId}");
+                    _blackList = await RestService.GetBlockedCardsList();
+                });
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine(e);
+            }
+
             _blackListUpdateTimerTask.Elapsed += async (sender, e) =>
             {
-                _blackList = await RestService.GetBlockedCardsList();
+                Debug.WriteLine($"_blackListUpdateTimerTask.Elapsed");
+                try
+                {
+                    _blackList = await RestService.GetBlockedCardsList();
+                }
+                catch (Exception exception)
+                {
+                    Debug.WriteLine(exception);
+                }
             };
             _blackListUpdateTimerTask.Start();
             ChangeResultBoxState(ResultStatesEnum.Waiting);
@@ -153,49 +195,53 @@ namespace NFCFormsSample
 
         async void HandleNewTag(object sender, NfcFormsTag tag)
         {
+            if (_currentResultState==ResultStatesEnum.Working)
+                return;
+            Debug.WriteLine($"HandleNewTag");
             _resultBoxResetTimerTask.Stop();
             try
             {
+                ChangeResultBoxState(ResultStatesEnum.Working);
                 var bytesArray = new byte[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
                 for (int i = 0; i < tag.Id.Length; i++)
                     bytesArray[i] = tag.Id[i];
                 long tagID = BitConverter.ToInt64(bytesArray, 0);
+                Debug.WriteLine($"tagID={tagID}");
                 //foreach (var item in tag.Id)
                 //{
                 //    tagID += item.ToString("X2") /*+ ":"*/;
                 //}
-
                 if (_blackList.Contains(tagID))
                 {
+                    Debug.WriteLine($"Card in blacklist");
                     ChangeResultBoxState(ResultStatesEnum.Blocked);
                     return;
                 }
                 if (CardsBufferBan.ContainsKey(tagID))
                 {
-                    ChangeResultBoxState(ResultStatesEnum.Banned);
                     if (_checkTimeValue(CardsBufferBan[tagID], TimeOfBan))
+                    {
+                        Debug.WriteLine($"Card in CardsBufferBan. Removing");
                         CardsBufferBan.Remove(tagID);
+                    }
                     else
                     {
+                        Debug.WriteLine($"Card in CardsBufferBan. Updating time");
                         CardsBufferBan[tagID] = DateTime.Now;
+                        ChangeResultBoxState(ResultStatesEnum.Banned);
                         return;
                     }
                 }
                 string resultMessage;
                 if ((resultMessage = await RestService.SendNewEvent(_currentLongitude, _currentLatitude, tagID)) != null)
                 {
+                    Debug.WriteLine($"Not enought money");
                     ChangeResultBoxState(ResultStatesEnum.NotEnoughMoney, resultMessage);
                     return;
                 }
+                Debug.WriteLine($"Success transaction");
                 CardsBufferBan.Add(tagID, DateTime.Now);
                 ChangeResultBoxState(ResultStatesEnum.CanGo);
-                //string path = Environment.GetFolderPath(Environment.SpecialFolder.Personal);
-                //string filename = Path.Combine(path, "querysLog.txt");
-                //using (var streamWriter = new StreamWriter(filename, true))
-                //{
-                //    streamWriter.WriteLine($"insert into events(payment_time,bus_id,coordinates,card_id) " +
-                //                           $"values (sysdate,{CurrentUserData.BusId},'{_currentLongitude} x {_currentLatitude}','{tagID}');\n");
-                //}
             }
             catch (Exception ex)
             {
@@ -208,19 +254,28 @@ namespace NFCFormsSample
         }
 
         /// <summary>
-        /// Проверяет, прошло ли с item момента времени time минут 
+        /// Проверяет, прошло ли с item момента времени time секунд 
         /// </summary>
         /// <param name="item"></param>
         /// <param name="time"></param>
         /// <returns></returns>
         private bool _checkTimeValue(DateTime item, int time)
         {
-            return DateTime.Now.Minute + DateTime.Now.Hour * 60 - item.Hour * 60 - item.Minute >= time;
+            //return DateTime.Now.Minute + DateTime.Now.Hour * 60 - item.Hour * 60 - item.Minute >= time;//в минутах
+            return DateTime.Now.Second + DateTime.Now.Minute * 60 - item.Second - item.Minute * 60 >= time;//в секундах
         }
 
         private void onLoginButton_Clicled(object sender, EventArgs e)
         {
-            ShowLoginPagePopUp();
+            Debug.WriteLine($"onLoginButton_Clicled");
+            try
+            {
+                ShowLoginPagePopUp();
+            }
+            catch (Exception exception)
+            {
+                Debug.WriteLine(exception);
+            }
         }
 
         private async void ShowLoginPagePopUp()
@@ -233,42 +288,72 @@ namespace NFCFormsSample
             await Navigation.PushModalAsync(contentPage, true);
         }
 
+        private ToneGenerator toneGen1;
         /// <summary>
-        /// 
+        /// Меняет текущий статус окна результата и при неободимости издает звуковой сигнал
         /// </summary>
         /// <param name="state"></param>
         /// <param name="message"></param>
         private void ChangeResultBoxState(ResultStatesEnum state, string message = "")
         {
-            switch (state)
+            Debug.WriteLine($"ChangeResultBoxState; state={state},message={message}");
+            //toneGen1.StartTone(Tone.PropNack, 500);
+            //toneGen1.StartTone(Tone.PropPrompt, 500);
+            try
             {
-                case ResultStatesEnum.CanGo:
-                    resultBox.Color = Color.Green;
-                    resultLabel.Text = "Можете идти";
-                    break;
-                case ResultStatesEnum.Banned:
-                    resultBox.Color = Color.Yellow;
-                    resultLabel.Text = "Вы уже прикладывали карту";
-                    break;
-                case ResultStatesEnum.Blocked:
-                    resultBox.Color = Color.Red;
-                    resultLabel.Text = "Ваша карта была заблокирована";
-                    break;
-                case ResultStatesEnum.NotEnoughMoney:
-                    resultBox.Color = Color.Purple;
-                    resultLabel.Text = "На Вашей карте недостаточно средств";
-                    break;
-                case ResultStatesEnum.Waiting:
-                    resultBox.Color = Color.Aqua;
-                    resultLabel.Text = "Приложите карту к терминалу";
-                    break;
-                default:
-                    resultBox.Color = Color.Aqua;
-                    resultLabel.Text = "Приложите карту к терминалу";
-                    break;
+                if (toneGen1 == null)
+                    toneGen1 = new ToneGenerator(Stream.Notification, 100);
+                else
+                {
+                    toneGen1.Release();
+                    toneGen1 = new ToneGenerator(Stream.Notification, 100);
+                }
+                _currentResultState = state;
+                switch (state)
+                {
+                    case ResultStatesEnum.CanGo:
+                        resultBox.Color = Color.Green;
+                        resultLabel.Text = "Можете идти";
+                        toneGen1.StartTone(Tone.PropPrompt, 500);
+                        break;
+                    case ResultStatesEnum.Banned:
+                        resultBox.Color = Color.Yellow;
+                        resultLabel.Text = "Вы уже прикладывали карту";
+                        toneGen1.StartTone(Tone.PropNack, 500);
+                        break;
+                    case ResultStatesEnum.Blocked:
+                        resultBox.Color = Color.Red;
+                        resultLabel.Text = "Ваша карта была заблокирована";
+                        toneGen1.StartTone(Tone.PropNack, 500);
+                        break;
+                    case ResultStatesEnum.NotEnoughMoney:
+                        resultBox.Color = Color.Purple;
+                        resultLabel.Text = "На Вашей карте недостаточно средств";
+                        toneGen1.StartTone(Tone.PropNack, 500);
+                        break;
+                    case ResultStatesEnum.Waiting:
+                        resultBox.Color = Color.Aqua;
+                        resultLabel.Text = "Приложите карту к терминалу";
+                        break;
+                    case ResultStatesEnum.Working:
+                        resultBox.Color = Color.Thistle;
+                        resultLabel.Text = "Подождите. Выполняется обработка.";
+                        break;
+
+                    default:
+                        resultBox.Color = Color.Aqua;
+                        resultLabel.Text = "Приложите карту к терминалу";
+                        toneGen1.StartTone(Tone.PropPrompt, 500);
+                        break;
+                }
+                if (!String.IsNullOrEmpty(message))
+                    resultLabel.Text = message;
             }
-            if (!String.IsNullOrEmpty(message))
-                resultLabel.Text = message;
+            catch (Exception e)
+            {
+                Debug.WriteLine(e);
+            }
+
         }
 
 
@@ -280,6 +365,7 @@ namespace NFCFormsSample
             Banned,
             NotEnoughMoney,
             Waiting,
+            Working
         }
     }
 }

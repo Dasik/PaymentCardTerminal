@@ -1,11 +1,18 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
-<ContentView xmlns="http://xamarin.com/schemas/2014/forms" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" x:Class="NFCFormsSample.LoginPagePopUp">
+<ContentView xmlns="http://xamarin.com/schemas/2014/forms" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:nfcFormsSample="clr-namespace:NFCFormsSample;assembly=NFCFormsSample.Droid"
+             x:Class="NFCFormsSample.LoginPagePopUp">
   <ContentView.Content>
         <Grid>
             <StackLayout Padding="10" Spacing="15">
                 <Entry x:Name="LoginEntry" Completed="LoginEntry_OnCompleted" Placeholder="Логин" TextChanged="LoginEntry_OnTextChanged"></Entry>
-                <Entry x:Name="PasswordEntry" Completed="OKButton_OnClicked" Placeholder="Пароль" IsPassword="True"></Entry>
-                <Button x:Name="OKButton" Text="Ok" Clicked="OKButton_OnClicked"></Button>
+                <Entry x:Name="PasswordEntry" Completed="AuthorizeButton_OnClicked" Placeholder="Пароль" IsPassword="True"></Entry>
+                <Button x:Name="AuthorizeButton" Text="Авторизация" Clicked="AuthorizeButton_OnClicked"></Button>
+                <Label x:Name="ChooseBusLabel" Text="Выберите автобус" IsVisible="False"></Label>
+                <nfcFormsSample:ExtendedPicker x:Name="BusesPicker" ItemsSource="{Binding BusesList}" DisplayProperty="Value" IsVisible="False"/>
+                <Label x:Name="ChooseRouteLabel" Text="Выберите номер маршрута" IsVisible="False"></Label>
+                <nfcFormsSample:ExtendedPicker x:Name="RoutesPicker" ItemsSource="{Binding RoutesList}" DisplayProperty="Value" IsVisible="False"/>
+                <Button x:Name="OKButton" Text="Продолжить" Clicked="OKButton_OnClicked" IsVisible="False"></Button>
             </StackLayout>
         </Grid>
     </ContentView.Content>

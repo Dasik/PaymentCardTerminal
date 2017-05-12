@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using RestSharp;
@@ -33,28 +34,30 @@ namespace NFCFormsSample
         /// <summary>
         /// Возвращает id маршрута, если он объявлен, иначе -1
         /// </summary>
-        public static int BusId
+        public static long BusId
         {
             //Application.Current.Properties ["id"] = someClass.ID;
             get
             {
                 if (Application.Current.Properties.ContainsKey("BusId"))
                 {
-                    return (int) Application.Current.Properties["BusId"];
+                    return (long) Application.Current.Properties["BusId"];
                 }
                     return -1;
             }
+            set { Application.Current.Properties["BusId"] = value; }
         }
 
-        public static int RouteId
+        public static long RouteId
         {
             get {
                 if (Application.Current.Properties.ContainsKey("RouteId"))
                 {
-                    return (int)Application.Current.Properties["RouteId"];
+                    return (long)Application.Current.Properties["RouteId"];
                 }
                     return -1;
             }
+            set { Application.Current.Properties["RouteId"] = value; }
         }
 
         static CurrentUserData()
@@ -68,13 +71,13 @@ namespace NFCFormsSample
             //                           $"values (sysdate,{CurrentUserData.BusId},'{_currentLongitude} x {_currentLatitude}','{tagID}');\n");
             //}
 
-            //File.WriteAllText(filename, SimpleJson.SerializeObject(new BusRouteIdsClassForDeserealize() { BusID = 5, RouteId = 5 }));
-
+            
             if (!File.Exists(filename))
             {
-                ShowError("Ошибка. Возможно файл настроек программы поврежден. Обратитесь к админимтратору");
-                return;
+                Debug.WriteLine("URLSettings File Not Exists. Creating new");
+                File.WriteAllText(filename, SimpleJson.SerializeObject(new BusRouteIdsClassForDeserealize() { BusID = -1, RouteId = -1 }));
             }
+
             var jsonFile= File.ReadAllText(filename);
             try
             {
@@ -84,8 +87,15 @@ namespace NFCFormsSample
             }
             catch (Exception ex)
             {
-                ShowError(ex.Message);
+                ShowError("Ошибка. Файл настроек поврежден. Обратитесь к администратору. Ошибка:"+ex.Message);
             }
+        }
+
+        public static void SaveBusRoute()
+        {
+            string path = Environment.GetFolderPath(Environment.SpecialFolder.Personal);
+            string filename = Path.Combine(path, "SystemSettings.dat");
+            File.WriteAllText(filename, SimpleJson.SerializeObject(new BusRouteIdsClassForDeserealize() { BusID = BusId, RouteId = RouteId }));
         }
 
         public static async void ShowError(string message)
@@ -114,8 +124,8 @@ namespace NFCFormsSample
         //}
         private class BusRouteIdsClassForDeserealize
         {
-            public int BusID { get; set; }
-            public int RouteId { get; set; }
+            public long BusID { get; set; }
+            public long RouteId { get; set; }
         }
     }
 
