@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="NFCCardRegistration.MainXAMLPage"
+             Title="Payment card терминал">
+    <Grid>
+        <StackLayout>
+            <StackLayout Orientation="Horizontal">
+                <Label Text="Ключ: "></Label>
+                <Label x:Name="KeyLabel"></Label>
+            </StackLayout>
+            <StackLayout Orientation="Horizontal" HorizontalOptions="Fill">
+                <Label Text="Баланс: " VerticalOptions="EndAndExpand"></Label>
+                <Entry x:Name="BalanceEntry" Keyboard="Numeric" Text="0" Completed="BalanceEntry_OnCompleted" HorizontalOptions="FillAndExpand" MinimumWidthRequest="100"></Entry>
+            </StackLayout>
+            <Button x:Name="SendButton" Text="Подтвердить" Clicked="SendButton_OnClicked"></Button>
+        </StackLayout>
+    </Grid>
+</ContentPage>

@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<ContentView xmlns="http://xamarin.com/schemas/2014/forms" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:nfcCardRegistration="clr-namespace:NFCCardRegistration;assembly=NFCCardRegistration.Droid"
+             xmlns:droid="clr-namespace:NFCCardRegistration.Droid"
+             x:Class="NFCCardRegistration.LoginPagePopUp">
+  <ContentView.Content>
+        <Grid>
+            <StackLayout Padding="10" Spacing="15">
+                <Entry x:Name="LoginEntry" Completed="LoginEntry_OnCompleted" Placeholder="Логин" TextChanged="LoginEntry_OnTextChanged"></Entry>
+                <Entry x:Name="PasswordEntry" Completed="AuthorizeButton_OnClicked" Placeholder="Пароль" IsPassword="True"></Entry>
+                <Button x:Name="AuthorizeButton" Text="Авторизация" Clicked="AuthorizeButton_OnClicked"></Button>
+            </StackLayout>
+        </Grid>
+    </ContentView.Content>
+</ContentView>
