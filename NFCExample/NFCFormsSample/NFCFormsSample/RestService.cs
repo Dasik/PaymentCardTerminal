@@ -40,7 +40,7 @@ namespace NFCFormsSample
         /// <param name="username">логин пользователя</param>
         /// <param name="password"> пароль</param>
         /// <returns>Возвращает id пользователя в случае успешного логина, иначе -1</returns>
-        public static async Task<long> LoginDriver(string username, string password)//TODO:Добавить обработку для владельца
+        public static async Task<long> LoginDriver(string username, string password)
         {
             tokenID = await _getCSRFToken();
             _client.Authenticator = new HttpBasicAuthenticator(username, password);
@@ -112,6 +112,7 @@ namespace NFCFormsSample
             request.AddJsonBody(new
             {
                 BusId = CurrentUserData.BusId,
+                RouteId=CurrentUserData.RouteId,
                 Longitude = longitude,
                 Latitude = latitude,
                 TagID = TagID
